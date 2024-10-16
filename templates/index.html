@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Bookshop Queue Simulation</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Queue Simulation</h1>
+      <div>
+        <h2>Simulation Parameters</h2>
+
+        <form id="simulation-form">
+          <div class="form-group">
+            <label for="random_seed">Random Seed:</label>
+            <input
+              type="number"
+              id="random_seed"
+              name="random_seed"
+              value="42"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="new_customers">Number of Customers:</label>
+            <input
+              type="number"
+              id="new_customers"
+              name="new_customers"
+              value="10"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="inter_arrival_time"
+              >Inter-Arrival Time (minutes):</label
+            >
+            <input
+              type="number"
+              step="0.1"
+              id="inter_arrival_time"
+              name="inter_arrival_time"
+              value="2"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="service_time">Service Time (minutes):</label>
+            <input
+              type="number"
+              step="0.1"
+              id="service_time"
+              name="service_time"
+              value="3"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="num_servers">Number of Servers:</label>
+            <input
+              type="number"
+              id="num_servers"
+              name="num_servers"
+              value="2"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="simulation_time">Simulation Time (minutes):</label>
+            <input
+              type="number"
+              step="1"
+              id="simulation_time"
+              name="simulation_time"
+              value="180"
+              required
+            />
+          </div>
+
+          <div class="cost">
+            <h2>Cost Parameters</h2>
+
+            <div class="form-group">
+              <label for="service_cost"
+                >Service Cost per Server ($/hour):</label
+              >
+              <input
+                type="number"
+                step="0.01"
+                id="service_cost"
+                name="service_cost"
+                value="10.00"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="wait_time_cost">Wait Time Cost per Minute ($):</label>
+              <input
+                type="number"
+                step="0.01"
+                id="wait_time_cost"
+                name="wait_time_cost"
+                value="0.50"
+                required
+              />
+            </div>
+          </div>
+
+          <button type="submit">Run Simulation</button>
+        </form>
+      </div>
+
+      <!-- Loader -->
+      <div class="loader" id="loader"></div>
+
+      <!-- Results Section -->
+      <div id="results" style="display: none">
+        <h2>Simulation Results</h2>
+        <section class="display-result">
+          <div class="result-item">
+            <strong>Average Wait Time:</strong>
+            <span id="avg_wait_time"></span> minutes
+          </div>
+          <div class="result-item">
+            <strong>Maximum Wait Time:</strong>
+            <span id="max_wait_time"></span> minutes
+          </div>
+          <div class="result-item">
+            <strong>Average Server Utilization:</strong>
+            <span id="avg_utilization"></span>%
+          </div>
+          <div class="result-item">
+            <strong>Server Utilizations:</strong>
+            <span id="server_utilizations"></span>%
+          </div>
+          <div class="result-item">
+            <strong>Total Simulation Time:</strong>
+            <span id="sim_time"></span> minutes
+          </div>
+          <div class="result-item">
+            <strong>Customers Served:</strong>
+            <span id="customers_served"></span>
+          </div>
+          <div class="result-item">
+            <strong>Total Cost:</strong> $<span id="total_cost"></span>
+          </div>
+        </section>
+
+        <h3>Performance Graphs</h3>
+        <div class="graphs">
+          <img
+            src="/static/simulation_graph.png"
+            alt="Wait and Service Times Graph"
+          />
+          <img
+            src="/static/queue_length_graph.png"
+            alt="Queue Length Over Time Graph"
+          />
+        </div>
+      </div>
+    </div>
+
+    <script>
+      document
+        .getElementById("simulation-form")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+
+          const formData = new FormData(this);
+          const data = new URLSearchParams();
+          for (const pair of formData) {
+            data.append(pair[0], pair[1]);
+          }
+
+          // Show the loader and hide previous results
+          document.getElementById("loader").style.display = "block";
+          document.getElementById("results").style.display = "none";
+
+          fetch("/simulate", {
+            method: "POST",
+            body: data,
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              // Hide the loader
+              document.getElementById("loader").style.display = "none";
+
+              // Update the results
+              document.getElementById("avg_wait_time").innerText =
+                data.average_wait_time;
+              document.getElementById("max_wait_time").innerText =
+                data.max_wait_time;
+              document.getElementById("avg_utilization").innerText =
+                data.average_server_utilization;
+              document.getElementById("server_utilizations").innerText =
+                data.server_utilizations.join(", ");
+              document.getElementById("sim_time").innerText =
+                data.simulation_time;
+              document.getElementById("customers_served").innerText =
+                data.customers_served;
+              document.getElementById("total_cost").innerText = data.total_cost;
+
+              // Update the graphs
+              document.querySelector(
+                '.graphs img[alt="Wait and Service Times Graph"]'
+              ).src = `/static/${
+                data.simulation_graph
+              }?t=${new Date().getTime()}`;
+              document.querySelector(
+                '.graphs img[alt="Queue Length Over Time Graph"]'
+              ).src = `/static/${
+                data.queue_length_graph
+              }?t=${new Date().getTime()}`;
+
+              // Show the results
+              document.getElementById("results").style.display = "block";
+            })
+            .catch((error) => {
+              console.error("Error:", error);
+              // Hide the loader in case of error
+              document.getElementById("loader").style.display = "none";
+              alert(
+                "An error occurred while running the simulation. Please try again."
+              );
+            });
+        });
+    </script>
+  </body>
+</html>
